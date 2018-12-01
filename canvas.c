@@ -11,6 +11,8 @@ Canvas *canvasInit()
     c->bufferCapacity = 0;
     canvasExpandBuffer(c);
     
+    // TODO Compile shader
+    
     return c;
 }
 
@@ -27,6 +29,10 @@ void canvasRender(Canvas *c)
         printf("%f ", c->commandBuffer[i]);
     }
     printf("\n");
+    
+    // TODO bind buffers
+    // bind shader
+    // draw
 }
 
 
