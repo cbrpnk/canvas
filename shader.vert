@@ -2,5 +2,5 @@
 
 void main()
 {
-    gl_position = gl_Vertex;
+    gl_Position = gl_Vertex;
 }

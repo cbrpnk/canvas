@@ -1,5 +1,8 @@
 #version 120
 
+// TODO This should not be hardcoded
+vec2 iResolution = vec2(640, 480);
+
 /*
  * Sdf functions by Inigo Quilez
  * http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -169,9 +172,9 @@ float circle(vec2 pos, float radius)
 
 //////////////////////////// Main /////////////////////////////
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
+void main()
 {
-    uv = fragCoord/iResolution.xy;
+    uv = gl_FragCoord.xy/iResolution.xy;
     uv.x *= iResolution.x/iResolution.y;
     
     // Stroke
@@ -226,5 +229,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     draw();
     
     // Output to screen
-    fragColor = vec4(outputColor, 1.);
+    gl_FragColor = vec4(outputColor, 1.);
 }

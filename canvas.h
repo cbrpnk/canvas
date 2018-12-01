@@ -1,5 +1,17 @@
 #ifndef CANVAS_H
 #define CANVAS_H
+    
+static const unsigned int canvasQuadIndices[] = {
+    0, 1, 3,
+    3, 1, 2
+};
+
+static const float canvasQuadVertices[] = {
+    -1.0f,  1.0f, 0.0f,
+    -1.0f, -1.0f, 0.0f,
+     1.0f, -1.0f, 0.0f,
+     1.0f,  1.0f, 0.0f
+};
 
 typedef enum CanvasCommand {
     CANVAS_STROKE = 0,
@@ -10,6 +22,10 @@ typedef struct Canvas {
     float *commandBuffer;
     unsigned int bufferSize;
     unsigned int bufferCapacity;
+    // Gl
+    unsigned int shaderProgram;
+    unsigned int indexBuffer;
+    unsigned int vertexBuffer;
 } Canvas;
 
 Canvas *canvasInit();
