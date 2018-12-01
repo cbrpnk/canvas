@@ -12,7 +12,6 @@ int main(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     
-    
     window = glfwCreateWindow(640, 480, "Canvas Test", NULL, NULL);
     if(!window) {
         glfwTerminate();
@@ -20,16 +19,20 @@ int main(int argc, char **argv)
     }
     
     glfwMakeContextCurrent(window);
+    
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glViewport(0, 0, width, height);
+    
+    Canvas *c = canvasInit();
+    //canvasStroke(c, 0.003);
+    //canvasRender(c);
+    
     while(!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    
-    Canvas *c = canvasInit();
-    canvasStroke(c, 0.003);
-    
-    canvasRender(c);
     
     return 0;
 }
