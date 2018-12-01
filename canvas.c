@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <GL/gl.h>
 #include "canvas.h"
 
 Canvas *canvasInit()
 {
     Canvas *c = malloc(sizeof(Canvas));
+    c->commandBuffer = NULL;
     c->bufferSize = 0;
     c->bufferCapacity = 0;
     canvasExpandBuffer(c);
