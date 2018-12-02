@@ -1,7 +1,8 @@
 #version 120
 
-// TODO This should not be hardcoded
-vec2 iResolution = vec2(640, 480);
+uniform vec2 iResolution;
+uniform int nCommands;
+uniform sampler1D commandBuffer;
 
 /*
  * Sdf functions by Inigo Quilez
@@ -172,11 +173,36 @@ float circle(vec2 pos, float radius)
 
 //////////////////////////// Main /////////////////////////////
 
+// Gets the next element in the command buffer, might be a command or a parameter
+int pxPtr = 0;
+int chPtr = 0;
+
+float nextCmd() {
+    if(chPtr == 4) {
+        chPtr = 0;
+        pxPtr++;
+    }
+    return texture1D(commandBuffer, pxPtr)[chPtr++];
+}
+
+float nextParam() {
+    return mix(-10., 10., nextCmd());
+}
+
 void main()
 {
     uv = gl_FragCoord.xy/iResolution.xy;
     uv.x *= iResolution.x/iResolution.y;
     
+    for(int i=0; i<nCommands; ++i) {
+        float cmd = nextCmd(); 
+        if(cmd == 0.010) {
+            ADDFILL(circle(vec2(nextParam(), nextParam()), nextParam()));
+            draw();
+        }
+    }
+    
+    /*
     // Stroke
     stroke(.003);
     
@@ -227,6 +253,7 @@ void main()
     lineTo(vec2(.8, .4));
     addPath();
     draw();
+    */
     
     // Output to screen
     gl_FragColor = vec4(outputColor, 1.);

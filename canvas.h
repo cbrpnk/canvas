@@ -16,16 +16,33 @@ static const float canvasQuadVertices[] = {
 typedef enum CanvasCommand {
     CANVAS_STROKE = 0,
     CANVAS_FILL,
+    CANVAS_FILL_CIRC = 10
 } CanvasCommand;
+
+static const float canvasCommandCode[] = {
+    0.000f, // Unused
+    0.001f, // Unused
+    0.002f, // Unused
+    0.003f, // Unused
+    0.004f, // Unused
+    0.005f, // Unused
+    0.006f, // Unused
+    0.007f, // Unused
+    0.008f, // Unused
+    0.009f, // Unused
+    0.010f, // FILL_CIRC
+};
 
 typedef struct Canvas {
     float *commandBuffer;
+    unsigned int nCommands;
     unsigned int bufferSize;
     unsigned int bufferCapacity;
     // Gl
     unsigned int shaderProgram;
     unsigned int indexBuffer;
     unsigned int vertexBuffer;
+    unsigned int commandBufferTex;
 } Canvas;
 
 Canvas *canvasInit();
@@ -42,7 +59,8 @@ void canvasAddParam(Canvas *c, float param);
 
 /////////////////// Commands ///////////////////////
 
-int canvasStroke(Canvas *canvas, float size);
+int canvasStroke(Canvas *c, float size);
+int canvasFillCirc(Canvas *c, float x, float y, float radius);
 
 
 #endif

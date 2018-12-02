@@ -27,6 +27,7 @@ void readShaderFile(const char *path, char **outFile)
 Canvas *canvasInit()
 {
     Canvas *c = malloc(sizeof(Canvas));
+    c->nCommands = 0;
     c->commandBuffer = NULL;
     c->bufferSize = 0;
     c->bufferCapacity = 0;
@@ -85,6 +86,13 @@ Canvas *canvasInit()
                  sizeof(canvasQuadVertices) * sizeof(float),
                  canvasQuadVertices, GL_STATIC_DRAW);
     
+    // Command Buffer Texture
+    glGenTextures(1, &c->commandBufferTex);
+    glBindTexture(GL_TEXTURE_1D, c->commandBufferTex);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_1D, 0);
+    
     // Opengl settings
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -112,7 +120,24 @@ void canvasRender(Canvas *c)
     glBindBuffer(GL_ARRAY_BUFFER, c->vertexBuffer);
     glVertexPointer(3, GL_FLOAT, 0, 0);
     glUseProgram(c->shaderProgram);
+    
+    // Bind resolution
+    glUniform2f(glGetUniformLocation(c->shaderProgram, "iResolution"), 640, 480);
+    
+    // Bind resolution
+    glUniform1i(glGetUniformLocation(c->shaderProgram, "nCommands"), c->nCommands);
+    
+    // Bind command buffer
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_1D, c->commandBufferTex);
+    // TODO Dynamic size
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, 1024, 0, GL_RGBA, GL_FLOAT,
+                 c->commandBuffer);
+    glUniform1i(glGetUniformLocation(c->shaderProgram, "commandBuffer"), 0);
+
     glDrawElements(GL_TRIANGLES, sizeof(canvasQuadVertices), GL_UNSIGNED_INT, 0);
+    
+    // Unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glDisableClientState(GL_VERTEX_ARRAY);
 }
@@ -129,14 +154,16 @@ void canvasExpandBuffer(Canvas *c)
 void canvasAddCommand(Canvas *c, CanvasCommand cmd)
 {
     if(c->bufferSize == c->bufferCapacity) canvasExpandBuffer(c);
+    c->nCommands++;
     // TODO Encode command into float
-    c->commandBuffer[c->bufferSize++] = cmd;
+    c->commandBuffer[c->bufferSize++] = canvasCommandCode[cmd];
 }
 
 void canvasAddParam(Canvas *c, float param)
 {
     if(c->bufferSize == c->bufferCapacity) canvasExpandBuffer(c);
-    c->commandBuffer[c->bufferSize++] = param;
+    // Map [-10, 10] -> [0, 1]
+    c->commandBuffer[c->bufferSize++] = (param + 10.0f) / 20.0f;
 }
 
 /////////////////// Commands ///////////////////////
@@ -145,5 +172,14 @@ int canvasStroke(Canvas *c, float size)
 {
     canvasAddCommand(c, CANVAS_STROKE);
     canvasAddParam(c, size);
+    return 0;
+}
+
+int canvasFillCirc(Canvas *c, float x, float y, float radius)
+{
+    canvasAddCommand(c, CANVAS_FILL_CIRC);
+    canvasAddParam(c, x);
+    canvasAddParam(c, y);
+    canvasAddParam(c, radius);
     return 0;
 }
