@@ -124,17 +124,19 @@ void canvasRender(Canvas *c)
     // Bind resolution
     glUniform2f(glGetUniformLocation(c->shaderProgram, "iResolution"), 640, 480);
     
-    // Bind resolution
+    // Bind nCommands
     glUniform1i(glGetUniformLocation(c->shaderProgram, "nCommands"), c->nCommands);
+    
+    // Bind CmdSize
+    glUniform1i(glGetUniformLocation(c->shaderProgram, "commandSize"), c->bufferSize);
     
     // Bind command buffer
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_1D, c->commandBufferTex);
-    // TODO Dynamic size
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, 1024, 0, GL_RGBA, GL_FLOAT,
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, c->bufferSize, 0, GL_RGBA, GL_FLOAT,
                  c->commandBuffer);
     glUniform1i(glGetUniformLocation(c->shaderProgram, "commandBuffer"), 0);
-
+    
     glDrawElements(GL_TRIANGLES, sizeof(canvasQuadVertices), GL_UNSIGNED_INT, 0);
     
     // Unbind
@@ -155,7 +157,6 @@ void canvasAddCommand(Canvas *c, CanvasCommand cmd)
 {
     if(c->bufferSize == c->bufferCapacity) canvasExpandBuffer(c);
     c->nCommands++;
-    // TODO Encode command into float
     c->commandBuffer[c->bufferSize++] = canvasCommandCode[cmd];
 }
 
@@ -167,6 +168,74 @@ void canvasAddParam(Canvas *c, float param)
 }
 
 /////////////////// Commands ///////////////////////
+
+int canvasDraw(Canvas *c)
+{
+    canvasAddCommand(c, CANVAS_DRAW);
+    return 0;
+}
+
+int canvasRotate(Canvas *c, float angle)
+{
+    canvasAddCommand(c, CANVAS_ROTATE);
+    canvasAddParam(c, angle);
+    return 0;
+}
+
+int canvasScale(Canvas *c, float factor)
+{
+    canvasAddCommand(c, CANVAS_SCALE);
+    canvasAddParam(c, factor);
+    return 0;
+}
+
+int canvasTranslate(Canvas *c, float x, float y)
+{
+    canvasAddCommand(c, CANVAS_TRANSLATE);
+    canvasAddParam(c, x);
+    canvasAddParam(c, y);
+    return 0;
+}
+
+int canvasLinearGrad(Canvas *c, float r1, float g1, float b1, float a1,
+                                float r2, float g2, float b2, float a2)
+{
+    canvasAddCommand(c, CANVAS_LINEAR_GRAD);
+    canvasAddParam(c, r1);
+    canvasAddParam(c, g1);
+    canvasAddParam(c, b1);
+    canvasAddParam(c, a1);
+    canvasAddParam(c, r2);
+    canvasAddParam(c, g2);
+    canvasAddParam(c, b2);
+    canvasAddParam(c, a2);
+    return 0;
+}
+
+int canvasRadialGrad(Canvas *c, float r1, float g1, float b1, float a1,
+                                float r2, float g2, float b2, float a2)
+{
+    canvasAddCommand(c, CANVAS_RADIAL_GRAD);
+    canvasAddParam(c, r1);
+    canvasAddParam(c, g1);
+    canvasAddParam(c, b1);
+    canvasAddParam(c, a1);
+    canvasAddParam(c, r2);
+    canvasAddParam(c, g2);
+    canvasAddParam(c, b2);
+    canvasAddParam(c, a2);
+    return 0;
+}
+
+int canvasFill(Canvas *c, float r, float g, float b, float a)
+{
+    canvasAddCommand(c, CANVAS_FILL);
+    canvasAddParam(c, r);
+    canvasAddParam(c, g);
+    canvasAddParam(c, b);
+    canvasAddParam(c, a);
+    return 0;
+}
 
 int canvasStroke(Canvas *c, float size)
 {

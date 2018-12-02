@@ -39,7 +39,10 @@ int main(int argc, char **argv)
     glViewport(0, 0, width, height);
     
     Canvas *c = canvasInit();
-    canvasFillCirc(c, .7, .7, .05);
+    canvasRadialGrad(c, .1, .4, .8, 1., 1., 0., 0., 1.);
+    canvasFillCirc(c, .7, .7, .1);
+    canvasFillCirc(c, .2, .2, .05);
+    canvasDraw(c);
     
     while(!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

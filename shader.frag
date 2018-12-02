@@ -2,7 +2,9 @@
 
 uniform vec2 iResolution;
 uniform int nCommands;
+uniform int commandSize;
 uniform sampler1D commandBuffer;
+
 
 /*
  * Sdf functions by Inigo Quilez
@@ -174,13 +176,14 @@ float circle(vec2 pos, float radius)
 //////////////////////////// Main /////////////////////////////
 
 // Gets the next element in the command buffer, might be a command or a parameter
-int pxPtr = 0;
+float pxPtr = 0;
 int chPtr = 0;
+float texelSize = 1.0f/commandSize;
 
 float nextCmd() {
     if(chPtr == 4) {
         chPtr = 0;
-        pxPtr++;
+        pxPtr += texelSize;
     }
     return texture1D(commandBuffer, pxPtr)[chPtr++];
 }
@@ -194,66 +197,40 @@ void main()
     uv = gl_FragCoord.xy/iResolution.xy;
     uv.x *= iResolution.x/iResolution.y;
     
+    float cmd = 0.;
     for(int i=0; i<nCommands; ++i) {
-        float cmd = nextCmd(); 
-        if(cmd == 0.010) {
-            ADDFILL(circle(vec2(nextParam(), nextParam()), nextParam()));
+        cmd = nextCmd(); 
+        if(cmd == 0.000) {
             draw();
+        }
+        else if(cmd == 0.001) {
+            rotate(nextParam());
+        }
+        else if(cmd == 0.002) {
+            scale(nextParam());
+        }
+        else if(cmd == 0.003) {
+            translate(nextParam(), nextParam());
+        }
+        else if(cmd == 0.004) {
+            linearGrad(vec4(nextParam(), nextParam(), nextParam(), nextParam()),
+                       vec4(nextParam(), nextParam(), nextParam(), nextParam()));
+        }
+        else if(cmd == 0.005) {
+            radialGrad(vec4(nextParam(), nextParam(), nextParam(), nextParam()),
+                       vec4(nextParam(), nextParam(), nextParam(), nextParam()));
+        }
+        else if(cmd == 0.006) {
+            fill(vec4(nextParam(), nextParam(), nextParam(), nextParam()));
+        }
+        else if(cmd == 0.007) {
+            stroke(nextParam());
+        }
+        else if(cmd == 0.008) {
+            ADDFILL(circle(vec2(nextParam(), nextParam()), nextParam()));
         }
     }
     
-    /*
-    // Stroke
-    stroke(.003);
-    
-    // Triangle
-    fill(vec4(1., 0., 0., 1.));
-    ADDFILL(tri(vec2(.1, .3), vec2(.3, .7), vec2(1.5, .3)));
-    INTERFILL(circle(vec2(.1, .34), .3));
-    SUBSTROKE(tri(vec2(.2, .34), vec2(.3, .7), vec2(1.5, .3)));
-    SUBSTROKE(line(vec2(.3, .4), vec2(.5, .5)));
-    draw();
-    
-    // Circle
-    save(0);
-    fill(vec4(0., 1., 0., .5));
-    save(1);
-    translate(.25, .5);
-    scale(.1);
-    rotate(.2);
-    radialGrad(vec4(1., 0., 0. ,1.), vec4(0., 1., 0., 1));
-    restore(1);
-    ADDFILL(circle(vec2(.25, .5), .08));
-    SUBSTROKE(circle(vec2(.25, .5), .03));
-    draw();
-    restore(0);
-    
-    // Rect
-    save(0);
-    rotate(.3);
-    scale(.5);
-    translate(.4, .6);
-    fill(vec4(0., 0., 1., .5));
-    ADDFILL(rect(vec2(.0, .0), vec2(.1, .1)));
-    SUBSTROKE(rect(vec2(.0, .0), vec2(.05, .1)));
-    draw();
-    restore(0);
-    
-    // Line
-    fill(vec4(1., 1., 0., 1.));
-    ADDSTROKE(line(vec2(.4, .3), vec2(.5, .5)));
-    draw();
-    
-    // Path
-    stroke(0.0005);
-    beginPath(vec2(.1, .3));
-    lineTo(vec2(.2, .4));
-    lineTo(vec2(.1, .2));
-    lineTo(vec2(.5, .4));
-    lineTo(vec2(.8, .4));
-    addPath();
-    draw();
-    */
     
     // Output to screen
     gl_FragColor = vec4(outputColor, 1.);
