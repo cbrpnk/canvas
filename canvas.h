@@ -1,79 +1,65 @@
 #ifndef CANVAS_H
 #define CANVAS_H
-    
-static const unsigned int canvasQuadIndices[] = {
-    0, 1, 3,
-    3, 1, 2
-};
 
-static const float canvasQuadVertices[] = {
-    -1.0f,  1.0f, 0.0f,
-    -1.0f, -1.0f, 0.0f,
-     1.0f, -1.0f, 0.0f,
-     1.0f,  1.0f, 0.0f
-};
+#include "math.h"
 
-typedef enum CanvasCommand {
-    CANVAS_DRAW        = 0,
-    CANVAS_ROTATE      = 1,
-    CANVAS_SCALE       = 2,
-    CANVAS_TRANSLATE   = 3,
-    CANVAS_LINEAR_GRAD = 4,
-    CANVAS_RADIAL_GRAD = 5,
-    CANVAS_FILL        = 6,
-    CANVAS_STROKE      = 7,
-    CANVAS_FILL_CIRC   = 8,
-} CanvasCommand;
+typedef struct CanvasObj CanvasObj;
 
-static const float canvasCommandCode[] = {
-    0.000f, // DRAW
-    0.001f, // ROTATE
-    0.002f, // SCALE
-    0.003f, // TRANSLATE
-    0.004f, // LINEAR_GRAD
-    0.005f, // RADIAL_GRAD
-    0.006f, // FILL
-    0.007f, // STROKE
-    0.008f, // FILL_CRIC
-};
+typedef struct CanvasState {
+    CanvasMat4 transform;
+    float      strokeWidth;
+} CanvasState;
 
-typedef struct Canvas {
-    float *commandBuffer;
-    unsigned int nCommands;
-    unsigned int bufferSize;
-    unsigned int bufferCapacity;
-    // Gl
+typedef struct Canvas { 
+    unsigned int width;
+    unsigned int height;
+    CanvasObj*   objs;
+    unsigned int objSize;
     unsigned int shaderProgram;
-    unsigned int indexBuffer;
-    unsigned int vertexBuffer;
-    unsigned int commandBufferTex;
+    
+    // State
+    CanvasState *stateStack;
+    unsigned int stateStackSize;
+    unsigned int stateStackCapacity;
+    // Points to the state at the top of the stack
+    CanvasState *state;
 } Canvas;
 
-Canvas *canvasInit();
+
+/////////////// Top Level Api //////////////
+
+Canvas *canvasInit(unsigned int width, unsigned int height);
 void canvasCleanup(Canvas *c);
 void canvasRender(Canvas *c);
 
-/////////////// Used by commands ////////////////////
 
-#define BUFFER_SIZE_INCREMENT 100
-void canvasExpandBuffer(Canvas *c);
-void canvasAddCommand(Canvas *c, CanvasCommand cmd);
-void canvasAddParam(Canvas *c, float param);
+////////////////// State ////////////////////
+
+void canvasSave(Canvas *c);
+void canvasRestore(Canvas *c);
 
 
-/////////////////// Commands ///////////////////////
+////////////////// Style ////////////////////
 
-int canvasDraw(Canvas *c);
-int canvasRotate(Canvas *c, float angle);
-int canvasScale(Canvas *c, float factor);
-int canvasTranslate(Canvas *c, float x, float y);
-int canvasLinearGrad(Canvas *c, float r1, float g1, float b1, float a1,
-                                float r2, float g2, float b2, float a2);
-int canvasRadialGrad(Canvas *c, float r1, float g1, float b1, float a1,
-                                float r2, float g2, float b2, float a2);
-int canvasFill(Canvas *c, float r, float g, float b, float a);
-int canvasStroke(Canvas *c, float size);
-int canvasFillCirc(Canvas *c, float x, float y, float radius);
+void canvasStrokeWidth(Canvas *c, float sw);
 
+
+/////////////// Transform ///////////////////
+
+void canvasRotate(Canvas *c, float angle);
+void canvasScale(Canvas *c, float x, float y);
+void canvasTranslate(Canvas *c, float x, float y);
+
+        
+/////////////// Drawing ///////////////////
+
+void canvasTri(Canvas *c, float x1, float y1, float x2, float y2, float x3, float y3);
+void canvasRect(Canvas *c, float x, float y, float w, float h);
+void canvasNgonArc(Canvas *c, float x, float y, float r, float angle,
+                   unsigned int segments);
+void canvasNgon(Canvas *c, float x, float y, float r, float n);
+void canvasArc(Canvas *c, float x, float y, float r, float angle);
+void canvasCirc(Canvas *c, float x, float y, float r);
+void canvasLine(Canvas *c, float x1, float y1, float x2, float y2);
 
 #endif

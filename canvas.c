@@ -2,7 +2,11 @@
 #include <GL/glew.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <math.h>
+
 #include "canvas.h"
+#include "obj.h"
 
 void readShaderFile(const char *path, char **outFile)
 {
@@ -24,14 +28,27 @@ void readShaderFile(const char *path, char **outFile)
     fclose(fp);
 }
 
-Canvas *canvasInit()
+Canvas *canvasInit(unsigned int width, unsigned int height)
 {
     Canvas *c = malloc(sizeof(Canvas));
-    c->nCommands = 0;
-    c->commandBuffer = NULL;
-    c->bufferSize = 0;
-    c->bufferCapacity = 0;
-    canvasExpandBuffer(c);
+    c->width = width;
+    c->height = height;
+    c->objs = NULL;
+    c->objSize = 0;
+    
+    // State
+    c->stateStack = malloc(sizeof(CanvasState));
+    c->stateStackSize = 1;
+    c->stateStackCapacity = 1;
+    c->state = c->stateStack;
+    
+    // Transform
+    memcpy(c->state->transform, canvasMat4Identity, sizeof(canvasMat4Identity));
+    canvasTranslate(c, -1.0, -1.0);
+    canvasScale(c, 2./width, 2./height);
+    
+    // Other state attributes
+    c->state->strokeWidth = 2;
     
     // Compile vertex shader
     char *vertexCode = NULL;
@@ -72,31 +89,10 @@ Canvas *canvasInit()
         printf("Link error: %s\n", infoLog);
     }
     
-    // Index Buffers
-    glGenBuffers(1, (GLuint*) &c->indexBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (GLuint) c->indexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 sizeof(canvasQuadIndices) * sizeof(unsigned int),
-                 canvasQuadIndices, GL_STATIC_DRAW);
-
-    // Vertex Buffer
-    glGenBuffers(1, (GLuint*) &c->vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, (GLuint) c->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(canvasQuadVertices) * sizeof(float),
-                 canvasQuadVertices, GL_STATIC_DRAW);
-    
-    // Command Buffer Texture
-    glGenTextures(1, &c->commandBufferTex);
-    glBindTexture(GL_TEXTURE_1D, c->commandBufferTex);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glBindTexture(GL_TEXTURE_1D, 0);
-    
     // Opengl settings
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    glEnable(GL_MULTISAMPLE);
     
     // Cleanup
     glDeleteShader(vertexShader);
@@ -109,146 +105,216 @@ Canvas *canvasInit()
 
 void canvasCleanup(Canvas *c)
 {
-    free(c->commandBuffer);
+    for(int i=0; i<c->objSize; ++i) {
+        canvasObjCleanup(&c->objs[i]);
+    }
+    free(c->objs);
+    free(c->stateStack);
     free(c);
+}
+
+CanvasObj *canvasAddObj(Canvas *c, unsigned int nVertices)
+{
+    c->objs = realloc(c->objs, (c->objSize+1) * sizeof(CanvasObj));
+    CanvasObj *obj = &(c->objs[c->objSize]);
+    canvasObjInit(obj, c, nVertices);
+    c->objSize++;
+    return obj;
 }
 
 void canvasRender(Canvas *c)
 {
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c->indexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, c->vertexBuffer);
-    glVertexPointer(3, GL_FLOAT, 0, 0);
-    glUseProgram(c->shaderProgram);
+    for(int i=0; i<c->objSize; ++i) {
+        CanvasObj *obj = &c->objs[i];
+        
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glBindBuffer(GL_ARRAY_BUFFER, obj->vertexBuffer);
+        glVertexPointer(3, GL_FLOAT, 0, 0);
+        
+        // Shader
+        glUseProgram(obj->shader);
+        
+        // Bind transform
+        glUniformMatrix4fv(glGetUniformLocation(c->shaderProgram, "transform"),
+                           1,
+                           GL_FALSE,
+                           (const GLfloat *) obj->transform);
+        
+        // Draw
+        glDrawArrays(obj->primitives, 0, obj->nVertices);
+        
+        // Unbind
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glDisableClientState(GL_VERTEX_ARRAY);
+    }
+}
+
+////////////////// State ////////////////////
+
+void canvasSave(Canvas *c)
+{
+    if(c->stateStackSize == c->stateStackCapacity) {
+        c->stateStackCapacity++;
+        c->stateStack = realloc(c->stateStack,
+                                c->stateStackCapacity * sizeof(CanvasState));
+    }
+    c->state = c->stateStack + c->stateStackSize;
+    memcpy(c->state, c->state-1, sizeof(CanvasState));
+    c->stateStackSize++;
+}
+
+void canvasRestore(Canvas *c)
+{
+    if(c->stateStackSize > 1) {
+        c->stateStackSize--;
+        c->state--;
+    }
+}
+
+///////////////// Style ///////////////////
+
+void canvasStrokeWidth(Canvas *c, float sw)
+{
+    c->state->strokeWidth = sw;
+}
+
+/////////////// Transform /////////////////
+
+void canvasRotate(Canvas *c, float angle)
+{
+    CanvasMat4 tmp;
+    memcpy(tmp, canvasMat4Identity, sizeof(tmp));
     
-    // Bind resolution
-    glUniform2f(glGetUniformLocation(c->shaderProgram, "iResolution"), 640, 480);
+    CANVAS_MAT4_AT(tmp, 0, 0) = cos(angle);
+    CANVAS_MAT4_AT(tmp, 0, 1) = sin(angle);
+    CANVAS_MAT4_AT(tmp, 1, 0) = -sin(angle);
+    CANVAS_MAT4_AT(tmp, 1, 1) = cos(angle);
     
-    // Bind nCommands
-    glUniform1i(glGetUniformLocation(c->shaderProgram, "nCommands"), c->nCommands);
+    canvasMat4Mul(c->state->transform, tmp);
+}
+
+void canvasScale(Canvas *c, float x, float y)
+{
+    CanvasMat4 tmp;
+    memcpy(tmp, canvasMat4Identity, sizeof(tmp));
     
-    // Bind CmdSize
-    glUniform1i(glGetUniformLocation(c->shaderProgram, "commandSize"), c->bufferSize);
+    CANVAS_MAT4_AT(tmp, 0, 0) = x;
+    CANVAS_MAT4_AT(tmp, 1, 1) = y;
     
-    // Bind command buffer
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_1D, c->commandBufferTex);
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, c->bufferSize, 0, GL_RGBA, GL_FLOAT,
-                 c->commandBuffer);
-    glUniform1i(glGetUniformLocation(c->shaderProgram, "commandBuffer"), 0);
+    canvasMat4Mul(c->state->transform, tmp);
+}
+
+void canvasTranslate(Canvas *c, float x, float y)
+{
+    CanvasMat4 tmp;
+    memcpy(tmp, canvasMat4Identity, sizeof(tmp));
     
-    glDrawElements(GL_TRIANGLES, sizeof(canvasQuadVertices), GL_UNSIGNED_INT, 0);
+    CANVAS_MAT4_AT(tmp, 3, 0) = x;
+    CANVAS_MAT4_AT(tmp, 3, 1) = y;
     
-    // Unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glDisableClientState(GL_VERTEX_ARRAY);
+    canvasMat4Mul(c->state->transform, tmp);
 }
 
+/////////////// Drawing ///////////////////
 
-/////////////// Used by commands ////////////////////
-
-void canvasExpandBuffer(Canvas *c)
+void canvasTri(Canvas *c, float x1, float y1, float x2, float y2, float x3, float y3)
 {
-    c->commandBuffer = realloc(c->commandBuffer, sizeof(float) *
-                               (c->bufferCapacity + BUFFER_SIZE_INCREMENT));
+    CanvasObj *obj = canvasAddObj(c, 3);
+    
+    // Vertices
+    canvasObjSetVertex(obj, 0, x1, y1);
+    canvasObjSetVertex(obj, 1, x2, y2);
+    canvasObjSetVertex(obj, 2, x3, y3);
+    
+    canvasObjUpdateBuffers(obj);
 }
 
-void canvasAddCommand(Canvas *c, CanvasCommand cmd)
+void canvasRect(Canvas *c, float x, float y, float w, float h)
 {
-    if(c->bufferSize == c->bufferCapacity) canvasExpandBuffer(c);
-    c->nCommands++;
-    c->commandBuffer[c->bufferSize++] = canvasCommandCode[cmd];
+    CanvasObj *obj = canvasAddObj(c, 4);
+    obj->primitives = GL_TRIANGLE_STRIP;
+    
+    // Precomputes half dimentions
+    float hw = w/2;
+    float hh = h/2;
+    
+    // Top left corner
+    float tlx = x - hw;
+    float tly = y + hh;
+    
+    // Bottom right corner
+    float brx = x + hw;
+    float bry = y - hh;
+    
+    canvasObjSetVertex(obj, 0, tlx, bry); // Bottom left
+    canvasObjSetVertex(obj, 1, tlx, tly); // Top lef
+    canvasObjSetVertex(obj, 2, brx, bry); // Bottom right
+    canvasObjSetVertex(obj, 3, brx, tly); // Top right
+    
+    canvasObjUpdateBuffers(obj);
 }
 
-void canvasAddParam(Canvas *c, float param)
+void canvasNgonArc(Canvas *c, float x, float y, float r, float angle,
+                   unsigned int segments)
 {
-    if(c->bufferSize == c->bufferCapacity) canvasExpandBuffer(c);
-    // Map [-10, 10] -> [0, 1]
-    c->commandBuffer[c->bufferSize++] = (param + 10.0f) / 20.0f;
+    CanvasObj *obj = canvasAddObj(c, segments+2);
+    obj->primitives = GL_TRIANGLE_FAN;
+    
+    canvasObjSetVertex(obj, 0, x, y); // Center
+    
+    float angleIncrement = angle / segments;
+    float currentAngle = 0;
+    for(int i=0; i<=segments; ++i) {
+        float vertX = (cos(currentAngle) * r) + x;
+        float vertY = (sin(currentAngle) * r) + y;
+        canvasObjSetVertex(obj, i+1, vertX, vertY);
+        currentAngle += angleIncrement;
+    }
+    
+    canvasObjUpdateBuffers(obj);
 }
 
-/////////////////// Commands ///////////////////////
-
-int canvasDraw(Canvas *c)
+void canvasNgon(Canvas *c, float x, float y, float r, float n)
 {
-    canvasAddCommand(c, CANVAS_DRAW);
-    return 0;
+    canvasNgonArc(c, x, y, r, CANVAS_TAU, n);
 }
 
-int canvasRotate(Canvas *c, float angle)
+void canvasArc(Canvas *c, float x, float y, float r, float angle)
 {
-    canvasAddCommand(c, CANVAS_ROTATE);
-    canvasAddParam(c, angle);
-    return 0;
+    canvasNgonArc(c, x, y, r, angle, 32);
 }
 
-int canvasScale(Canvas *c, float factor)
+void canvasCirc(Canvas *c, float x, float y, float r)
 {
-    canvasAddCommand(c, CANVAS_SCALE);
-    canvasAddParam(c, factor);
-    return 0;
+    canvasArc(c, x, y, r, CANVAS_TAU);
 }
 
-int canvasTranslate(Canvas *c, float x, float y)
+void canvasLine(Canvas *c, float x1, float y1, float x2, float y2)
 {
-    canvasAddCommand(c, CANVAS_TRANSLATE);
-    canvasAddParam(c, x);
-    canvasAddParam(c, y);
-    return 0;
-}
-
-int canvasLinearGrad(Canvas *c, float r1, float g1, float b1, float a1,
-                                float r2, float g2, float b2, float a2)
-{
-    canvasAddCommand(c, CANVAS_LINEAR_GRAD);
-    canvasAddParam(c, r1);
-    canvasAddParam(c, g1);
-    canvasAddParam(c, b1);
-    canvasAddParam(c, a1);
-    canvasAddParam(c, r2);
-    canvasAddParam(c, g2);
-    canvasAddParam(c, b2);
-    canvasAddParam(c, a2);
-    return 0;
-}
-
-int canvasRadialGrad(Canvas *c, float r1, float g1, float b1, float a1,
-                                float r2, float g2, float b2, float a2)
-{
-    canvasAddCommand(c, CANVAS_RADIAL_GRAD);
-    canvasAddParam(c, r1);
-    canvasAddParam(c, g1);
-    canvasAddParam(c, b1);
-    canvasAddParam(c, a1);
-    canvasAddParam(c, r2);
-    canvasAddParam(c, g2);
-    canvasAddParam(c, b2);
-    canvasAddParam(c, a2);
-    return 0;
-}
-
-int canvasFill(Canvas *c, float r, float g, float b, float a)
-{
-    canvasAddCommand(c, CANVAS_FILL);
-    canvasAddParam(c, r);
-    canvasAddParam(c, g);
-    canvasAddParam(c, b);
-    canvasAddParam(c, a);
-    return 0;
-}
-
-int canvasStroke(Canvas *c, float size)
-{
-    canvasAddCommand(c, CANVAS_STROKE);
-    canvasAddParam(c, size);
-    return 0;
-}
-
-int canvasFillCirc(Canvas *c, float x, float y, float radius)
-{
-    canvasAddCommand(c, CANVAS_FILL_CIRC);
-    canvasAddParam(c, x);
-    canvasAddParam(c, y);
-    canvasAddParam(c, radius);
-    return 0;
+    CanvasObj *obj = canvasAddObj(c, 4);
+    obj->primitives = GL_TRIANGLE_STRIP;
+    
+    // 
+    float halfStroke = c->state->strokeWidth / 2;
+    
+    // Position one tip of the line at the origin
+    float x = x2 - x1;
+    float y = y2 - y1;
+    
+    // Get Perpendicular vector
+    float px = y;
+    float py = -x;
+    
+    // Make perpendicular vector have the size of the stroke width
+    float len = sqrt(px*px + py*py);
+    px *= halfStroke/len;
+    py *= halfStroke/len;
+    
+    // Draw quad
+    canvasObjSetVertex(obj, 0, px+x1, py+y1);
+    canvasObjSetVertex(obj, 1, -px+x1, -py+y1);
+    canvasObjSetVertex(obj, 2, px+x2, py+y2);
+    canvasObjSetVertex(obj, 3, -px+x2, -py+y2);
+    
+    canvasObjUpdateBuffers(obj);
 }
