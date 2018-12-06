@@ -49,6 +49,8 @@ Canvas *canvasInit(unsigned int width, unsigned int height)
     
     // Other state attributes
     c->state->strokeWidth = 2;
+    canvasStrokeWidth(c, 2);
+    canvasFillColor(c, 1, 1, 1);
     
     // Compile vertex shader
     char *vertexCode = NULL;
@@ -91,7 +93,6 @@ Canvas *canvasInit(unsigned int width, unsigned int height)
     
     // Opengl settings
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
     
     // Cleanup
@@ -140,6 +141,12 @@ void canvasRender(Canvas *c)
                            GL_FALSE,
                            (const GLfloat *) obj->transform);
         
+        // FillColor
+        glUniform3f(glGetUniformLocation(c->shaderProgram, "fillColor"),
+                    obj->fillColor[0],
+                    obj->fillColor[1],
+                    obj->fillColor[2]);
+        
         // Draw
         glDrawArrays(obj->primitives, 0, obj->nVertices);
         
@@ -176,6 +183,13 @@ void canvasRestore(Canvas *c)
 void canvasStrokeWidth(Canvas *c, float sw)
 {
     c->state->strokeWidth = sw;
+}
+
+void canvasFillColor(Canvas *c, float r, float g, float b)
+{
+    c->state->fillColor[0] = r;
+    c->state->fillColor[1] = g;
+    c->state->fillColor[2] = b;
 }
 
 /////////////// Transform /////////////////

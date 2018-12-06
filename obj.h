@@ -6,9 +6,10 @@
 typedef struct Canvas Canvas;
 
 typedef struct CanvasObj {
-    float *vertices;
+    float        *vertices;
     unsigned int nVertices;
-    CanvasMat4 transform;
+    CanvasMat4   transform;
+    float        fillColor[3];
     
     // Gl stuff
     unsigned int shader;

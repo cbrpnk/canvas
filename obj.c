@@ -10,6 +10,7 @@ void canvasObjInit(CanvasObj *obj, Canvas *c, unsigned int nVertices)
     obj->vertices = calloc(1, nVertices * 3 * sizeof(float));
     obj->nVertices = nVertices;
     memcpy(obj->transform, c->state->transform, sizeof(obj->transform));
+    memcpy(obj->fillColor, c->state->fillColor, sizeof(obj->fillColor));
     obj->shader = c->shaderProgram;
     obj->primitives = GL_TRIANGLES;
     glGenBuffers(1, (GLuint*) &obj->vertexBuffer);

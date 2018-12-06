@@ -8,6 +8,7 @@ typedef struct CanvasObj CanvasObj;
 typedef struct CanvasState {
     CanvasMat4 transform;
     float      strokeWidth;
+    float      fillColor[3];
 } CanvasState;
 
 typedef struct Canvas { 
@@ -42,6 +43,7 @@ void canvasRestore(Canvas *c);
 ////////////////// Style ////////////////////
 
 void canvasStrokeWidth(Canvas *c, float sw);
+void canvasFillColor(Canvas *c, float r, float g, float b);
 
 
 /////////////// Transform ///////////////////
