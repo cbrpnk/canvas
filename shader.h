@@ -1,11 +1,11 @@
-#ifndef CANVAS_SHADER_H
-#define CANVAS_SHADER_H
+#ifndef GFX_SHADER_H
+#define GFX_SHADER_H
 
-typedef struct CanvasShader {
+typedef struct GfxShader {
     unsigned int glId;
-} CanvasShader;
+} GfxShader;
 
-void canvasShaderInit(CanvasShader *shader, char *vertexPath, char *fragmentPath);
-void canvasShaderCleanup(CanvasShader *shader);
+void gfxShaderInit(GfxShader *shader, char *vertexPath, char *fragmentPath);
+void gfxShaderCleanup(GfxShader *shader);
 
 #endif

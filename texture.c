@@ -4,7 +4,7 @@
 
 #include "texture.h"
 
-void canvasTextureInit(CanvasTexture *tex, char *path)
+void gfxTextureInit(GfxTexture *tex, char *path)
 {
     unsigned int width, height, n;
     unsigned char *texData = stbi_load(path, &width, &height, &n, 0);

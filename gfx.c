@@ -5,12 +5,12 @@
 #include <string.h>
 
 #include "shader.h"
-#include "canvas.h"
+#include "gfx.h"
 #include "obj.h"
 
-Canvas *canvasInit(unsigned int width, unsigned int height)
+Gfx *gfxInit(unsigned int width, unsigned int height)
 {
-    Canvas *c = malloc(sizeof(Canvas));
+    Gfx *c = malloc(sizeof(Gfx));
     c->width = width;
     c->height = height;
     
@@ -24,15 +24,15 @@ Canvas *canvasInit(unsigned int width, unsigned int height)
     return c;
 }
 
-void canvasCleanup(Canvas *c)
+void gfxCleanup(Gfx *c)
 {
     free(c);
 }
 
-void canvasSetSize(Canvas *c, unsigned int width, unsigned int height)
+void gfxSetSize(Gfx *c, unsigned int width, unsigned int height)
 {
     // Transform
-    //memcpy(c->state->transform, canvasMat4Identity, sizeof(canvasMat4Identity));
-    //canvasTranslate(c, -1.0, -1.0);
-    //canvasScale(c, 2./width, 2./height);
+    //memcpy(c->state->transform, gfxMat4Identity, sizeof(gfxMat4Identity));
+    //gfxTranslate(c, -1.0, -1.0);
+    //gfxScale(c, 2./width, 2./height);
 }

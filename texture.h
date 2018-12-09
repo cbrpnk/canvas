@@ -1,13 +1,13 @@
-#ifndef CANVAS_TEXTURE_H
-#define CANVAS_TEXTURE_H
+#ifndef GFX_TEXTURE_H
+#define GFX_TEXTURE_H
 
-typedef struct CanvasTexture {
+typedef struct GfxTexture {
     unsigned int width;
     unsigned int height;
     unsigned int glId;
-} CanvasTexture;
+} GfxTexture;
 
-void canvasTextureInit(CanvasTexture *tex, char *path);
-void canvasTextureCleanup();
+void gfxTextureInit(GfxTexture *tex, char *path);
+void gfxTextureCleanup();
 
 #endif

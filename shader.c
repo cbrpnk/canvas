@@ -25,7 +25,7 @@ void readFile(const char *path, char **outFile)
     fclose(fp);
 }
 
-void canvasShaderInit(CanvasShader *shader, char *vertexPath, char *fragmentPath)
+void gfxShaderInit(GfxShader *shader, char *vertexPath, char *fragmentPath)
 {
     // Compile vertex shader
     char *vertexCode = NULL;
@@ -73,7 +73,7 @@ void canvasShaderInit(CanvasShader *shader, char *vertexPath, char *fragmentPath
     free(fragmentCode);
 }
 
-void canvasShaderCleanup(CanvasShader *shader)
+void gfxShaderCleanup(GfxShader *shader)
 {
     glDeleteProgram(shader->glId);
 }

@@ -3,16 +3,16 @@
 #include <string.h>
 
 #include "obj.h"
-#include "canvas.h"
+#include "gfx.h"
 
-void canvasObjInit(CanvasObj *obj, CanvasObj *parent)
+void gfxObjInit(GfxObj *obj, GfxObj *parent)
 {
     // Pointer to an array of vertex components x,y,z,x,y,z,...
     obj->parent = parent;
     obj->vertices = NULL;
     obj->vertCount = 0;
     obj->vertCapacity = 0;
-    memcpy(obj->transform, canvasMat4Identity, sizeof(canvasMat4Identity));
+    memcpy(obj->transform, gfxMat4Identity, sizeof(gfxMat4Identity));
     obj->fillColor[0] = 1.;
     obj->fillColor[1] = 1.;
     obj->fillColor[2] = 1.;
@@ -28,35 +28,35 @@ void canvasObjInit(CanvasObj *obj, CanvasObj *parent)
     obj->subObjCount = 0;
 }
 
-void canvasObjCleanup(CanvasObj *obj)
+void gfxObjCleanup(GfxObj *obj)
 {
     free(obj->vertices);
     for(int i=0; i<obj->subObjCount; ++i) {
-        canvasObjCleanup(&(obj->subObjs[i]));
+        gfxObjCleanup(&(obj->subObjs[i]));
     }
 }
 
-void canvasSetTexture(CanvasObj *obj, unsigned int *texture)
+void gfxSetTexture(GfxObj *obj, unsigned int *texture)
 {
     obj->texture = *texture;
     obj->hasTexture = 1;
 }
 
-void canvasSetShader(CanvasObj *obj, CanvasShader *shader)
+void gfxSetShader(GfxObj *obj, GfxShader *shader)
 {
     obj->shader = shader;
 }
 
-CanvasObj *canvasObjNew(CanvasObj *obj)
+GfxObj *gfxObjNew(GfxObj *obj)
 {
-    obj->subObjs = realloc(obj->subObjs, (obj->subObjCount+1) * sizeof(CanvasObj));
-    CanvasObj *newObj = &(obj->subObjs[obj->subObjCount]);
-    canvasObjInit(newObj, obj);
+    obj->subObjs = realloc(obj->subObjs, (obj->subObjCount+1) * sizeof(GfxObj));
+    GfxObj *newObj = &(obj->subObjs[obj->subObjCount]);
+    gfxObjInit(newObj, obj);
     obj->subObjCount++;
     return newObj;
 }
 
-void canvasRenderWork(CanvasObj *obj)
+void gfxRenderWork(GfxObj *obj)
 {
     glEnableClientState(GL_VERTEX_ARRAY);
     glBindBuffer(GL_ARRAY_BUFFER, obj->vertexBuffer);
@@ -91,55 +91,55 @@ void canvasRenderWork(CanvasObj *obj)
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void canvasRender(CanvasObj *obj)
+void gfxRender(GfxObj *obj)
 {
-    canvasRenderWork(obj);
+    gfxRenderWork(obj);
     for(int i=0; i<obj->subObjCount; ++i) {
-        canvasRender(&obj->subObjs[i]);
+        gfxRender(&obj->subObjs[i]);
     }
 }
 
 /////////////// Transform ///////////////////
 
-void canvasRotate(CanvasObj *obj, float angle)
+void gfxRotate(GfxObj *obj, float angle)
 {
-    CanvasMat4 tmp;
-    memcpy(tmp, canvasMat4Identity, sizeof(tmp));
+    GfxMat4 tmp;
+    memcpy(tmp, gfxMat4Identity, sizeof(tmp));
     
-    CANVAS_MAT4_AT(tmp, 0, 0) = cos(angle);
-    CANVAS_MAT4_AT(tmp, 0, 1) = sin(angle);
-    CANVAS_MAT4_AT(tmp, 1, 0) = -sin(angle);
-    CANVAS_MAT4_AT(tmp, 1, 1) = cos(angle);
+    GFX_MAT4_AT(tmp, 0, 0) = cos(angle);
+    GFX_MAT4_AT(tmp, 0, 1) = sin(angle);
+    GFX_MAT4_AT(tmp, 1, 0) = -sin(angle);
+    GFX_MAT4_AT(tmp, 1, 1) = cos(angle);
     
-    canvasMat4Mul(obj->transform, tmp);
+    gfxMat4Mul(obj->transform, tmp);
 }
 
-void canvasScale(CanvasObj *obj, float x, float y)
+void gfxScale(GfxObj *obj, float x, float y)
 {
-    CanvasMat4 tmp;
-    memcpy(tmp, canvasMat4Identity, sizeof(tmp));
+    GfxMat4 tmp;
+    memcpy(tmp, gfxMat4Identity, sizeof(tmp));
     
-    CANVAS_MAT4_AT(tmp, 0, 0) = x;
-    CANVAS_MAT4_AT(tmp, 1, 1) = y;
+    GFX_MAT4_AT(tmp, 0, 0) = x;
+    GFX_MAT4_AT(tmp, 1, 1) = y;
     
-    canvasMat4Mul(obj->transform, tmp);
+   gfxMat4Mul(obj->transform, tmp);
 }
 
-void canvasTranslate(CanvasObj *obj, float x, float y)
+void gfxTranslate(GfxObj *obj, float x, float y)
 {
-    CanvasMat4 tmp;
-    memcpy(tmp, canvasMat4Identity, sizeof(tmp));
+    GfxMat4 tmp;
+    memcpy(tmp, gfxMat4Identity, sizeof(tmp));
     
-    CANVAS_MAT4_AT(tmp, 3, 0) = x;
-    CANVAS_MAT4_AT(tmp, 3, 1) = y;
+    GFX_MAT4_AT(tmp, 3, 0) = x;
+    GFX_MAT4_AT(tmp, 3, 1) = y;
     
-    canvasMat4Mul(obj->transform, tmp);
+    gfxMat4Mul(obj->transform, tmp);
 }
 
 
 ///////////// Used by the drawing funcntions ////////////////
 
-void canvasObjRequire(CanvasObj *obj, unsigned int nTriangles)
+void gfxObjRequire(GfxObj *obj, unsigned int nTriangles)
 {
     unsigned int free = (obj->vertCapacity - obj->vertCount);
     unsigned int needed = nTriangles*3;
@@ -149,7 +149,7 @@ void canvasObjRequire(CanvasObj *obj, unsigned int nTriangles)
     }
 }
 
-void canvasObjUpdateBuffers(CanvasObj *obj)
+void gfxObjUpdateBuffers(GfxObj *obj)
 {
     // Vertex buffer
     glBindBuffer(GL_ARRAY_BUFFER, (GLuint) obj->vertexBuffer);
@@ -158,10 +158,10 @@ void canvasObjUpdateBuffers(CanvasObj *obj)
                  obj->vertices, GL_STATIC_DRAW);
 }
 
-void canvasObjAddTriangle(CanvasObj *obj, float x1, float y1, float x2, float y2,
+void gfxObjAddTriangle(GfxObj *obj, float x1, float y1, float x2, float y2,
                           float x3, float y3)
 {
-    canvasObjRequire(obj, 1);
+    gfxObjRequire(obj, 1);
     unsigned int v = obj->vertCount * 3;
     obj->vertices[v]   = x1;
     obj->vertices[v+1] = y1;
@@ -175,24 +175,24 @@ void canvasObjAddTriangle(CanvasObj *obj, float x1, float y1, float x2, float y2
     obj->vertCount += 3;
 }
 
-void canvasObjAddTriangleStrip(CanvasObj *obj, float x, float y)
+void gfxObjAddTriangleStrip(GfxObj *obj, float x, float y)
 {
     float *lastVert = &obj->vertices[obj->vertCount*3 - 3];
     float *beforeLastVert = lastVert-3;
-    canvasObjAddTriangle(obj, *beforeLastVert, *(beforeLastVert+1),
+    gfxObjAddTriangle(obj, *beforeLastVert, *(beforeLastVert+1),
                          *lastVert, *(lastVert+1), x, y);
 }
 
 
 /////////////// Drawing ///////////////////
 
-void canvasTri(CanvasObj *obj, float x1, float y1, float x2, float y2, float x3, float y3)
+void gfxTri(GfxObj *obj, float x1, float y1, float x2, float y2, float x3, float y3)
 {
-    canvasObjAddTriangle(obj, x1, y1, x2, y2, x3, y3);
-    canvasObjUpdateBuffers(obj);
+    gfxObjAddTriangle(obj, x1, y1, x2, y2, x3, y3);
+    gfxObjUpdateBuffers(obj);
 }
 
-void canvasRect(CanvasObj *obj, float x, float y, float w, float h)
+void gfxRect(GfxObj *obj, float x, float y, float w, float h)
 {
     // Precomputes half dimentions
     float hw = w/2;
@@ -206,13 +206,13 @@ void canvasRect(CanvasObj *obj, float x, float y, float w, float h)
     float brx = x + hw;
     float bry = y - hh;
     
-    canvasObjAddTriangle(obj, tlx, bry, tlx, tly, brx, bry);
-    canvasObjAddTriangleStrip(obj, brx, tly);
+    gfxObjAddTriangle(obj, tlx, bry, tlx, tly, brx, bry);
+    gfxObjAddTriangleStrip(obj, brx, tly);
     
-    canvasObjUpdateBuffers(obj);
+    gfxObjUpdateBuffers(obj);
 }
 
-void canvasNgonArc(CanvasObj *obj, float x, float y, float r, float angle,
+void gfxNgonArc(GfxObj *obj, float x, float y, float r, float angle,
                    unsigned int segments)
 {
     float angleIncrement = angle / segments;
@@ -221,37 +221,37 @@ void canvasNgonArc(CanvasObj *obj, float x, float y, float r, float angle,
     // First Tirangle
     float lastX = cos(currentAngle)*r+x;
     float lastY = sin(currentAngle)*r+y;
-    canvasObjAddTriangle(obj, x, y, x+r, y, lastX, lastY);
+    gfxObjAddTriangle(obj, x, y, x+r, y, lastX, lastY);
     
     // The rest
     for(int i=1; i<segments; ++i) {
         currentAngle += angleIncrement;
         float currentX = cos(currentAngle)*r+x;
         float currentY = sin(currentAngle)*r+y;
-        canvasObjAddTriangle(obj, x, y, lastX, lastY, currentX, currentY);
+        gfxObjAddTriangle(obj, x, y, lastX, lastY, currentX, currentY);
         lastX = currentX;
         lastY = currentY;
     }
     
-    canvasObjUpdateBuffers(obj);
+    gfxObjUpdateBuffers(obj);
 }
 
-void canvasNgon(CanvasObj *obj, float x, float y, float r, float n)
+void gfxNgon(GfxObj *obj, float x, float y, float r, float n)
 {
-    canvasNgonArc(obj, x, y, r, CANVAS_TAU, n);
+    gfxNgonArc(obj, x, y, r, GFX_TAU, n);
 }
 
-void canvasArc(CanvasObj *obj, float x, float y, float r, float angle)
+void gfxArc(GfxObj *obj, float x, float y, float r, float angle)
 {
-    canvasNgonArc(obj, x, y, r, angle, 32);
+    gfxNgonArc(obj, x, y, r, angle, 32);
 }
 
-void canvasCirc(CanvasObj *obj, float x, float y, float r)
+void gfxCirc(GfxObj *obj, float x, float y, float r)
 {
-    canvasArc(obj, x, y, r, CANVAS_TAU);
+    gfxArc(obj, x, y, r, GFX_TAU);
 }
 
-void canvasLine(CanvasObj *obj, float x1, float y1, float x2, float y2)
+void gfxLine(GfxObj *obj, float x1, float y1, float x2, float y2)
 {
     // TODO Remove hardcoded value
     float halfStroke =  3.;
@@ -270,8 +270,8 @@ void canvasLine(CanvasObj *obj, float x1, float y1, float x2, float y2)
     py *= halfStroke/len;
     
     // Draw quad
-    canvasObjAddTriangle(obj, px+x1, py+y1, -px+x1, -py+y1, px+x2, py+y2);
-    canvasObjAddTriangleStrip(obj, -px+x2, -py+y2);
+    gfxObjAddTriangle(obj, px+x1, py+y1, -px+x1, -py+y1, px+x2, py+y2);
+    gfxObjAddTriangleStrip(obj, -px+x2, -py+y2);
     
-    canvasObjUpdateBuffers(obj);
+    gfxObjUpdateBuffers(obj);
 }

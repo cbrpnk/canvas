@@ -6,9 +6,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "canvas.h"
+#include "gfx.h"
 
-Canvas *c;
+Gfx *c;
 
 static void keyCallback(GLFWwindow *window, int key, int scancode,
                         int action, int mods)
@@ -21,7 +21,7 @@ static void keyCallback(GLFWwindow *window, int key, int scancode,
 static void windowSizeCallback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-    //canvasSetSize(c, width, height);
+    //gfxSetSize(c, width, height);
 }
 
 int main(int argc, char **argv)
@@ -33,7 +33,7 @@ int main(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_SAMPLES, 4);
     
-    window = glfwCreateWindow(640, 480, "Canvas Test", NULL, NULL);
+    window = glfwCreateWindow(640, 480, "Gfx Test", NULL, NULL);
     if(!window) {
         glfwTerminate();
         return -1;
@@ -47,13 +47,13 @@ int main(int argc, char **argv)
      
     glfwSetWindowSizeCallback(window, windowSizeCallback);
     
-    // Canvas
-    CanvasObj master;
-    canvasObjInit(&master, NULL);
-    CanvasShader shader;
-    canvasShaderInit(&shader, "res/shader.vert", "res/shader.frag");
-    canvasSetShader(&master, &shader);
-    canvasTri(&master, -.5f, -.5f, 0.0f, .5f, .5, -.5);
+    // Gfx
+    GfxObj master;
+    gfxObjInit(&master, NULL);
+    GfxShader shader;
+    gfxShaderInit(&shader, "res/shader.vert", "res/shader.frag");
+    gfxSetShader(&master, &shader);
+    gfxTri(&master, -.5f, -.5f, 0.0f, .5f, .5, -.5);
     
     /*
     gfxObj master;
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     while(!glfwWindowShouldClose(window)) {
         t1 = glfwGetTime();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        canvasRender(&master);
+        gfxRender(&master);
         glfwSwapBuffers(window);
         glfwPollEvents();
         t2 = glfwGetTime();
@@ -78,7 +78,7 @@ int main(int argc, char **argv)
         //printf("%f ", 1.0f/(t2-t1));
     }
     
-    //canvasCleanup(c);
+    //gfxCleanup(c);
     glfwDestroyWindow(window);
     glfwTerminate();
     
