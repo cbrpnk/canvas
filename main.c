@@ -55,6 +55,15 @@ int main(int argc, char **argv)
     canvasSetShader(&master, &shader);
     canvasTri(&master, -.5f, -.5f, 0.0f, .5f, .5, -.5);
     
+    /*
+    gfxObj master;
+    gfxObjInit(&master, NULL);
+    gfxShader shader;
+    gfxShaderInit(&shader, "res/shader.vert", "res/shader.frag");
+    gfxSetShader(&master, &shader);
+    gfxTri(&master, -.5f, -.5f, 0.0f, .5f, .5, -.5);
+    */
+    
     double t1, t2;
     while(!glfwWindowShouldClose(window)) {
         t1 = glfwGetTime();
