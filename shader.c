@@ -25,7 +25,7 @@ void readFile(const char *path, char **outFile)
     fclose(fp);
 }
 
-void gfxShaderInit(GfxShader *shader, char *vertexPath, char *fragmentPath)
+void gfxShaderInit(GfxShader *shader, const char *vertexPath, const char *fragmentPath)
 {
     // Compile vertex shader
     char *vertexCode = NULL;

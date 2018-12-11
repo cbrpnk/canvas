@@ -7,7 +7,7 @@ void gfxMat4SetIdentity(GfxMat4 *m)
     memcpy(m, gfxMat4Identity, sizeof(gfxMat4Identity));
 }
 
-void gfxMat4Mul(GfxMat4 a, const GfxMat4 b)
+void  gfxMat4Mul(GfxMat4 out, const GfxMat4 a, const GfxMat4 b)
 {
     GfxMat4 tmp;
     memset(tmp, 0, sizeof(tmp));
@@ -17,9 +17,11 @@ void gfxMat4Mul(GfxMat4 a, const GfxMat4 b)
             for(int k=0; k<4; ++k) {
                 GFX_MAT4_AT(tmp, i, j) += GFX_MAT4_AT(a, k, j) *
                                              GFX_MAT4_AT(b, i, k);
+                //GFX_MAT4_AT(tmp, i, j) += GFX_MAT4_AT(b, i, k) *
+                //                             GFX_MAT4_AT(a, k, j);
             }
         }
     }
     
-    memcpy(a, tmp, sizeof(tmp));
+    memcpy(out, tmp, sizeof(tmp));
 }

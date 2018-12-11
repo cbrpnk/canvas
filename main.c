@@ -8,7 +8,7 @@
 
 #include "gfx.h"
 
-Gfx *c;
+Gfx *gfx;
 
 static void keyCallback(GLFWwindow *window, int key, int scancode,
                         int action, int mods)
@@ -21,7 +21,7 @@ static void keyCallback(GLFWwindow *window, int key, int scancode,
 static void windowSizeCallback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-    //gfxSetSize(c, width, height);
+    gfxSetResolution(gfx, width, height);
 }
 
 int main(int argc, char **argv)
@@ -48,27 +48,20 @@ int main(int argc, char **argv)
     glfwSetWindowSizeCallback(window, windowSizeCallback);
     
     // Gfx
-    GfxObj master;
-    gfxObjInit(&master, NULL);
-    GfxShader shader;
-    gfxShaderInit(&shader, "res/shader.vert", "res/shader.frag");
-    gfxSetShader(&master, &shader);
-    gfxTri(&master, -.5f, -.5f, 0.0f, .5f, .5, -.5);
+    gfx = gfxInit(640, 480);
     
-    /*
-    gfxObj master;
-    gfxObjInit(&master, NULL);
-    gfxShader shader;
-    gfxShaderInit(&shader, "res/shader.vert", "res/shader.frag");
-    gfxSetShader(&master, &shader);
-    gfxTri(&master, -.5f, -.5f, 0.0f, .5f, .5, -.5);
-    */
+    GfxObj *triangle = gfxNewObj(gfx, gfx->root);
+    gfxTri(triangle, 0, 0, 100, 100, 200, 0);
+    gfxTranslate(triangle, 200, 200);
+    
+    GfxObj *rect = gfxNewObj(gfx, triangle);
+    gfxRect(rect, 30, 30, 200, 200);
     
     double t1, t2;
     while(!glfwWindowShouldClose(window)) {
         t1 = glfwGetTime();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        gfxRender(&master);
+        gfxRender(gfx);
         glfwSwapBuffers(window);
         glfwPollEvents();
         t2 = glfwGetTime();
@@ -78,7 +71,7 @@ int main(int argc, char **argv)
         //printf("%f ", 1.0f/(t2-t1));
     }
     
-    //gfxCleanup(c);
+    gfxCleanup(gfx);
     glfwDestroyWindow(window);
     glfwTerminate();
     

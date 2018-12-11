@@ -5,7 +5,7 @@ typedef struct GfxShader {
     unsigned int glId;
 } GfxShader;
 
-void gfxShaderInit(GfxShader *shader, char *vertexPath, char *fragmentPath);
+void gfxShaderInit(GfxShader *shader, const char *vertexPath, const char *fragmentPath);
 void gfxShaderCleanup(GfxShader *shader);
 
 #endif

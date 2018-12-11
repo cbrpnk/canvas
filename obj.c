@@ -3,73 +3,77 @@
 #include <string.h>
 
 #include "obj.h"
-#include "gfx.h"
+#include "mesh.h"
+#include "shader.h"
+#include "texture.h"
 
-void gfxObjInit(GfxObj *obj, GfxObj *parent)
+void gfxObjInit(GfxObj *obj, GfxObj *parent, GfxMesh *msh,  GfxShader *sh)
 {
     // Pointer to an array of vertex components x,y,z,x,y,z,...
-    obj->parent = parent;
-    obj->vertices = NULL;
-    obj->vertCount = 0;
-    obj->vertCapacity = 0;
     memcpy(obj->transform, gfxMat4Identity, sizeof(gfxMat4Identity));
     obj->fillColor[0] = 1.;
     obj->fillColor[1] = 1.;
     obj->fillColor[2] = 1.;
     obj->fillColor[3] = 1.;
-    obj->hasTexture = 0;
-    obj->shader = NULL;
     
-    glGenBuffers(1, (GLuint*) &obj->vertexBuffer);
-    obj->texture = 0;
+    // Mesh
+    obj->mesh = msh;
+    obj->shader = sh;
+    obj->texture = NULL;
     
-    // Sub objects
-    obj->subObjs = NULL;
-    obj->subObjCount = 0;
+    // Children
+    obj->parent = parent;
+    obj->children = NULL;
+    obj->childrenCount = 0;
 }
 
 void gfxObjCleanup(GfxObj *obj)
 {
-    free(obj->vertices);
-    for(int i=0; i<obj->subObjCount; ++i) {
-        gfxObjCleanup(&(obj->subObjs[i]));
-    }
+    free(obj->children);
 }
 
-void gfxSetTexture(GfxObj *obj, unsigned int *texture)
+void gfxSetMesh(GfxObj *obj, GfxMesh *msh)
 {
-    obj->texture = *texture;
-    obj->hasTexture = 1;
+    obj->mesh = msh;
 }
 
-void gfxSetShader(GfxObj *obj, GfxShader *shader)
+void gfxSetShader(GfxObj *obj, GfxShader *sh)
 {
-    obj->shader = shader;
+    obj->shader = sh;
 }
 
-GfxObj *gfxObjNew(GfxObj *obj)
+void gfxSetTexture(GfxObj *obj, GfxTexture *tex)
 {
-    obj->subObjs = realloc(obj->subObjs, (obj->subObjCount+1) * sizeof(GfxObj));
-    GfxObj *newObj = &(obj->subObjs[obj->subObjCount]);
-    gfxObjInit(newObj, obj);
-    obj->subObjCount++;
-    return newObj;
+    obj->texture = tex;
 }
 
-void gfxRenderWork(GfxObj *obj)
+void gfxAddChild(GfxObj *obj, GfxObj *child)
+{
+    obj->children = realloc(obj->children, (obj->childrenCount+1) * sizeof(GfxObj*));
+    obj->children[obj->childrenCount] = child;
+    obj->childrenCount++;
+}
+
+void gfxRenderWork(GfxObj *obj, GfxMat4 parentTransform)
 {
     glEnableClientState(GL_VERTEX_ARRAY);
-    glBindBuffer(GL_ARRAY_BUFFER, obj->vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, obj->mesh->glId);
     glVertexPointer(3, GL_FLOAT, 0, 0);
     
     // Shader TODO Make it so that every object has at least a default shader
     glUseProgram(obj->shader->glId);
     
     // Bind transform
+    GfxMat4 txform;
+    if(parentTransform != NULL) {
+        gfxMat4Mul(txform, parentTransform, obj->transform);
+    } else {
+        memcpy(txform, obj->transform, sizeof(obj->transform));
+    }
     glUniformMatrix4fv(glGetUniformLocation(obj->shader->glId, "transform"),
                        1,
                        GL_FALSE,
-                       (const GLfloat *) obj->transform);
+                       (const GLfloat *) txform);
     
     // FillColor
     glUniform3f(glGetUniformLocation(obj->shader->glId, "fillColor"),
@@ -77,29 +81,36 @@ void gfxRenderWork(GfxObj *obj)
                 obj->fillColor[1],
                 obj->fillColor[2]);
     
-    if(obj->hasTexture) {
+    if(obj->texture) {
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, obj->texture);
+        glBindTexture(GL_TEXTURE_2D, obj->texture->glId);
         glUniform1i(glGetUniformLocation(obj->shader->glId, "tex"), 0);
     }
     
     // Draw
-    glDrawArrays(GL_TRIANGLES, 0, obj->vertCount * 3);
+    glDrawArrays(GL_TRIANGLES, 0, obj->mesh->vertCount * 3);
     
     // Unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void gfxRender(GfxObj *obj)
+void gfxObjRender(GfxObj *obj, GfxMat4 parentTransform)
 {
-    gfxRenderWork(obj);
-    for(int i=0; i<obj->subObjCount; ++i) {
-        gfxRender(&obj->subObjs[i]);
+    gfxRenderWork(obj, parentTransform);
+    
+    GfxMat4 newTransform;
+    if(parentTransform != NULL) {
+        gfxMat4Mul(newTransform, obj->transform, parentTransform);
+    } else {
+        memcpy(newTransform, obj->transform, sizeof(obj->transform));
+    }
+    for(int i=0; i<obj->childrenCount; ++i) {
+        gfxObjRender(obj->children[i], newTransform);
     }
 }
 
-/////////////// Transform ///////////////////
+/////////////// Transforms ///////////////////
 
 void gfxRotate(GfxObj *obj, float angle)
 {
@@ -111,7 +122,7 @@ void gfxRotate(GfxObj *obj, float angle)
     GFX_MAT4_AT(tmp, 1, 0) = -sin(angle);
     GFX_MAT4_AT(tmp, 1, 1) = cos(angle);
     
-    gfxMat4Mul(obj->transform, tmp);
+    gfxMat4Mul(obj->transform, obj->transform, tmp);
 }
 
 void gfxScale(GfxObj *obj, float x, float y)
@@ -122,7 +133,7 @@ void gfxScale(GfxObj *obj, float x, float y)
     GFX_MAT4_AT(tmp, 0, 0) = x;
     GFX_MAT4_AT(tmp, 1, 1) = y;
     
-   gfxMat4Mul(obj->transform, tmp);
+   gfxMat4Mul(obj->transform, obj->transform, tmp);
 }
 
 void gfxTranslate(GfxObj *obj, float x, float y)
@@ -133,54 +144,7 @@ void gfxTranslate(GfxObj *obj, float x, float y)
     GFX_MAT4_AT(tmp, 3, 0) = x;
     GFX_MAT4_AT(tmp, 3, 1) = y;
     
-    gfxMat4Mul(obj->transform, tmp);
-}
-
-
-///////////// Used by the drawing funcntions ////////////////
-
-void gfxObjRequire(GfxObj *obj, unsigned int nTriangles)
-{
-    unsigned int free = (obj->vertCapacity - obj->vertCount);
-    unsigned int needed = nTriangles*3;
-    if(needed > free) {
-        obj->vertCapacity += needed - free;
-        obj->vertices = realloc(obj->vertices, obj->vertCapacity * 3 * sizeof(float));
-    }
-}
-
-void gfxObjUpdateBuffers(GfxObj *obj)
-{
-    // Vertex buffer
-    glBindBuffer(GL_ARRAY_BUFFER, (GLuint) obj->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER,
-                 obj->vertCount * 3 * sizeof(float),
-                 obj->vertices, GL_STATIC_DRAW);
-}
-
-void gfxObjAddTriangle(GfxObj *obj, float x1, float y1, float x2, float y2,
-                          float x3, float y3)
-{
-    gfxObjRequire(obj, 1);
-    unsigned int v = obj->vertCount * 3;
-    obj->vertices[v]   = x1;
-    obj->vertices[v+1] = y1;
-    obj->vertices[v+2] = 0;
-    obj->vertices[v+3] = x2;
-    obj->vertices[v+4] = y2;
-    obj->vertices[v+5] = 0;
-    obj->vertices[v+6] = x3;
-    obj->vertices[v+7] = y3;
-    obj->vertices[v+8] = 0;
-    obj->vertCount += 3;
-}
-
-void gfxObjAddTriangleStrip(GfxObj *obj, float x, float y)
-{
-    float *lastVert = &obj->vertices[obj->vertCount*3 - 3];
-    float *beforeLastVert = lastVert-3;
-    gfxObjAddTriangle(obj, *beforeLastVert, *(beforeLastVert+1),
-                         *lastVert, *(lastVert+1), x, y);
+    gfxMat4Mul(obj->transform, obj->transform, tmp);
 }
 
 
@@ -188,8 +152,8 @@ void gfxObjAddTriangleStrip(GfxObj *obj, float x, float y)
 
 void gfxTri(GfxObj *obj, float x1, float y1, float x2, float y2, float x3, float y3)
 {
-    gfxObjAddTriangle(obj, x1, y1, x2, y2, x3, y3);
-    gfxObjUpdateBuffers(obj);
+    gfxMeshAddTriangle(obj->mesh, x1, y1, x2, y2, x3, y3);
+    gfxMeshUpdateBuffers(obj->mesh);
 }
 
 void gfxRect(GfxObj *obj, float x, float y, float w, float h)
@@ -206,10 +170,10 @@ void gfxRect(GfxObj *obj, float x, float y, float w, float h)
     float brx = x + hw;
     float bry = y - hh;
     
-    gfxObjAddTriangle(obj, tlx, bry, tlx, tly, brx, bry);
-    gfxObjAddTriangleStrip(obj, brx, tly);
+    gfxMeshAddTriangle(obj->mesh, tlx, bry, tlx, tly, brx, bry);
+    gfxMeshAddTriangleStrip(obj->mesh, brx, tly);
     
-    gfxObjUpdateBuffers(obj);
+    gfxMeshUpdateBuffers(obj->mesh);
 }
 
 void gfxNgonArc(GfxObj *obj, float x, float y, float r, float angle,
@@ -221,19 +185,19 @@ void gfxNgonArc(GfxObj *obj, float x, float y, float r, float angle,
     // First Tirangle
     float lastX = cos(currentAngle)*r+x;
     float lastY = sin(currentAngle)*r+y;
-    gfxObjAddTriangle(obj, x, y, x+r, y, lastX, lastY);
+    gfxMeshAddTriangle(obj->mesh, x, y, x+r, y, lastX, lastY);
     
     // The rest
     for(int i=1; i<segments; ++i) {
         currentAngle += angleIncrement;
         float currentX = cos(currentAngle)*r+x;
         float currentY = sin(currentAngle)*r+y;
-        gfxObjAddTriangle(obj, x, y, lastX, lastY, currentX, currentY);
+        gfxMeshAddTriangle(obj->mesh, x, y, lastX, lastY, currentX, currentY);
         lastX = currentX;
         lastY = currentY;
     }
     
-    gfxObjUpdateBuffers(obj);
+    gfxMeshUpdateBuffers(obj->mesh);
 }
 
 void gfxNgon(GfxObj *obj, float x, float y, float r, float n)
@@ -270,8 +234,8 @@ void gfxLine(GfxObj *obj, float x1, float y1, float x2, float y2)
     py *= halfStroke/len;
     
     // Draw quad
-    gfxObjAddTriangle(obj, px+x1, py+y1, -px+x1, -py+y1, px+x2, py+y2);
-    gfxObjAddTriangleStrip(obj, -px+x2, -py+y2);
+    gfxMeshAddTriangle(obj->mesh, px+x1, py+y1, -px+x1, -py+y1, px+x2, py+y2);
+    gfxMeshAddTriangleStrip(obj->mesh, -px+x2, -py+y2);
     
-    gfxObjUpdateBuffers(obj);
+    gfxMeshUpdateBuffers(obj->mesh);
 }

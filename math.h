@@ -16,7 +16,7 @@ static const float gfxMat4Identity[] = {
 typedef float GfxMat4[16];
 #define GFX_MAT4_AT(m, i, j) m[4*(j)+(i)]
 
-void  gfxMat4Mul(GfxMat4 a, const GfxMat4 b);
+void  gfxMat4Mul(GfxMat4 out, const GfxMat4 a, const GfxMat4 b);
 
 
 #endif

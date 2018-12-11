@@ -4,7 +4,7 @@
 
 #include "texture.h"
 
-void gfxTextureInit(GfxTexture *tex, char *path)
+void gfxTextureInit(GfxTexture *tex, const char *path)
 {
     unsigned int width, height, n;
     unsigned char *texData = stbi_load(path, &width, &height, &n, 0);
@@ -19,4 +19,9 @@ void gfxTextureInit(GfxTexture *tex, char *path)
     glBindTexture(GL_TEXTURE_2D, 0);
     
     stbi_image_free(texData);
+}
+
+void gfxTextureCleanup(GfxTexture *tex)
+{
+    glDeleteTextures(1, &tex->glId);
 }

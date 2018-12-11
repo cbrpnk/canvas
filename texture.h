@@ -7,7 +7,7 @@ typedef struct GfxTexture {
     unsigned int glId;
 } GfxTexture;
 
-void gfxTextureInit(GfxTexture *tex, char *path);
+void gfxTextureInit(GfxTexture *tex, const char *path);
 void gfxTextureCleanup();
 
 #endif
