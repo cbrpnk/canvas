@@ -10,17 +10,22 @@ typedef enum GfxUniformType {
 
 typedef struct GfxUniform {
     GfxUniformType type;
-    union Data {
+    char *name;
+    union Value {
         float *f;
         int   *i;
-    } data;
+    } value;
 } GfxUniform;
 
 typedef struct GfxShader {
     unsigned int glId;
+    GfxUniform *uniforms;
+    unsigned int uniformCount;
 } GfxShader;
 
 void gfxShaderInit(GfxShader *shader, const char *vertexPath, const char *fragmentPath);
 void gfxShaderCleanup(GfxShader *shader);
+
+void gfxShaderAddUniform1f(GfxShader *sh, const char *name, float val);
 
 #endif
