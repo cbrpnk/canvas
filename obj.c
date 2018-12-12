@@ -60,7 +60,6 @@ void gfxRenderWork(GfxObj *obj, GfxMat4 parentTransform)
     glBindBuffer(GL_ARRAY_BUFFER, obj->mesh->glId);
     glVertexPointer(3, GL_FLOAT, 0, 0);
     
-    // Shader TODO Make it so that every object has at least a default shader
     glUseProgram(obj->shader->glId);
     
     // Bind transform
@@ -81,10 +80,14 @@ void gfxRenderWork(GfxObj *obj, GfxMat4 parentTransform)
                 obj->fillColor[1],
                 obj->fillColor[2]);
     
+    // TODO Have a uniform system in the shader module
     if(obj->texture) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, obj->texture->glId);
+        glUniform1i(glGetUniformLocation(obj->shader->glId, "hasTexture"), 1);
         glUniform1i(glGetUniformLocation(obj->shader->glId, "tex"), 0);
+    } else {
+        glUniform1i(glGetUniformLocation(obj->shader->glId, "hasTexture"), 0);
     }
     
     // Draw
@@ -92,6 +95,7 @@ void gfxRenderWork(GfxObj *obj, GfxMat4 parentTransform)
     
     // Unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
@@ -101,7 +105,7 @@ void gfxObjRender(GfxObj *obj, GfxMat4 parentTransform)
     
     GfxMat4 newTransform;
     if(parentTransform != NULL) {
-        gfxMat4Mul(newTransform, obj->transform, parentTransform);
+        gfxMat4Mul(newTransform, parentTransform, obj->transform);
     } else {
         memcpy(newTransform, obj->transform, sizeof(obj->transform));
     }

@@ -6,7 +6,7 @@
 
 void gfxTextureInit(GfxTexture *tex, const char *path)
 {
-    unsigned int width, height, n;
+    int width, height, n;
     unsigned char *texData = stbi_load(path, &width, &height, &n, 0);
     
     // Create opengl buffer

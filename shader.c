@@ -17,7 +17,6 @@ void readFile(const char *path, char **outFile)
     long fileSize = ftell(fp);
     rewind(fp);
     *outFile = calloc(1, fileSize+1);
-    int a=0;
     if(fread(*outFile, fileSize, 1, fp) != 1) {
         free(*outFile);
         exit(1);
